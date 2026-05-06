@@ -664,8 +664,91 @@ textarea.config-input { resize: vertical; min-height: 80px; }
 .gform-info code { background: rgba(255,255,255,.1); padding: 2px 6px; border-radius: 3px; font-family: monospace; }
 
 /* ══════════════════════════════════════
-   RESPONSIVE
+   ANIMATIONS
 ══════════════════════════════════════ */
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(18px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes slideInLeft {
+  from { opacity: 0; transform: translateX(-20px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+@keyframes pulseGreen {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(34,197,94,0); }
+  50%       { box-shadow: 0 0 0 8px rgba(34,197,94,0.25); }
+}
+@keyframes timerUrgentShake {
+  0%,100%{ transform:translateX(0); }
+  20%    { transform:translateX(-3px); }
+  40%    { transform:translateX(3px); }
+  60%    { transform:translateX(-2px); }
+  80%    { transform:translateX(2px); }
+}
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(0.88); }
+  to   { opacity: 1; transform: scale(1); }
+}
+@keyframes progressGlow {
+  0%,100% { box-shadow: 0 0 6px rgba(34,197,94,0.3); }
+  50%     { box-shadow: 0 0 14px rgba(34,197,94,0.7); }
+}
+
+/* Screen transitions */
+.screen.active { animation: fadeIn .35s ease; }
+#screen-landing .landing-inner { animation: fadeInUp .55s ease; }
+#screen-results .results-card { animation: scaleIn .4s cubic-bezier(.22,.9,.44,1); }
+
+/* Question card entrance */
+.question-card { animation: fadeInUp .3s ease; }
+
+/* Options: subtle entrance stagger via JS class */
+.option-item {
+  animation: slideInLeft .22s ease both;
+}
+.option-item:nth-child(1) { animation-delay: .03s; }
+.option-item:nth-child(2) { animation-delay: .07s; }
+.option-item:nth-child(3) { animation-delay: .11s; }
+.option-item:nth-child(4) { animation-delay: .15s; }
+.option-item:nth-child(5) { animation-delay: .19s; }
+
+/* Finish button: always pulsing green to draw attention */
+.btn-finish {
+  animation: pulseGreen 2s ease-in-out infinite;
+}
+.btn-finish:hover {
+  animation: none;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(22,163,74,.5);
+}
+
+/* Timer urgent: shake animation */
+.timer-display.urgent {
+  animation: timerUrgentShake .5s ease infinite;
+}
+
+/* Progress bar glow */
+#progress-fill, #exam-progress {
+  animation: progressGlow 2.5s ease-in-out infinite;
+}
+
+/* Sidebar q-btn hover micro-bounce */
+.q-btn { transition: transform .12s, border-color .12s, background .12s; }
+.q-btn:hover { transform: scale(1.15); }
+
+/* Landing stats count-up feel */
+.stat-num { transition: transform .2s; }
+
+/* Modal entrance */
+.modal-overlay:not(.hidden) .modal-box {
+  animation: scaleIn .28s cubic-bezier(.22,.9,.44,1);
+}
+
+
 @media (max-width: 900px) {
   .admin-layout { grid-template-columns: 1fr; }
   .admin-sidebar { display: none; }
@@ -785,6 +868,7 @@ textarea.config-input { resize: vertical; min-height: 80px; }
       <div class="sidebar-item" onclick="adminNav('bulk',this)">⚡ Ajout rapide</div>
       <div class="sidebar-item" onclick="adminNav('config',this)">⚙ Configuration</div>
       <div class="sidebar-item" onclick="adminNav('results',this)">🏆 Résultats</div>
+      <div class="sidebar-item" onclick="adminNav('session-analysis',this)">&#128202; Analyse Sessions</div>
       <div class="sidebar-item" onclick="adminNav('publish',this)">🌐 Publier (Google Sites)</div>
     </div>
     <div class="admin-content">
@@ -824,8 +908,10 @@ textarea.config-input { resize: vertical; min-height: 80px; }
       <div id="admin-questions" class="admin-section">
         <div class="section-header">
           <h2 class="section-title">Banque de Questions</h2>
-          <div style="display:flex;gap:10px;align-items:center">
+          <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
             <span style="font-size:13px;color:var(--muted)">Sélectionnées: <strong style="color:var(--gold)" id="selected-count">0</strong></span>
+            <button class="btn-secondary btn-sm" onclick="selectAllQuestions()" title="Tout sélectionner">☑ Tout sél.</button>
+            <button class="btn-secondary btn-sm" onclick="deselectAllQuestions()" title="Tout désélectionner">☐ Tout désél.</button>
             <button class="btn-gold btn-sm" onclick="adminNav('add',document.querySelector('.sidebar-item:nth-child(4)'))">+ Ajouter</button>
           </div>
         </div>
@@ -983,6 +1069,53 @@ textarea.config-input { resize: vertical; min-height: 80px; }
         </div>
       </div>
 
+      <!-- SESSION ANALYSIS -->
+      <div id="admin-session-analysis" class="admin-section">
+        <div class="section-header">
+          <h2 class="section-title">📋 Analyse par Session</h2>
+          <button class="btn-success btn-sm" onclick="exportSessionCSV()">📥 Exporter CSV</button>
+        </div>
+
+        <!-- Session selector -->
+        <div style="margin-bottom:20px;display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+          <label style="color:var(--muted);font-size:13px;font-weight:600">Session :</label>
+          <select id="sa-session-select" class="config-input" style="width:auto;min-width:180px" onchange="renderSessionAnalysis()">
+            <option value="all">— Toutes les sessions —</option>
+          </select>
+          <span id="sa-count" style="font-size:12px;color:var(--muted)"></span>
+        </div>
+
+        <!-- KPI cards -->
+        <div class="stats-cards" style="grid-template-columns:repeat(5,1fr);margin-bottom:20px" id="sa-kpis">
+          <div class="stat-card"><div class="stat-card-num" id="sa-total">—</div><div class="stat-card-label">Candidats</div></div>
+          <div class="stat-card"><div class="stat-card-num" id="sa-pass" style="color:var(--green)">—</div><div class="stat-card-label">Réussites</div></div>
+          <div class="stat-card"><div class="stat-card-num" id="sa-fail" style="color:var(--red)">—</div><div class="stat-card-label">Échecs</div></div>
+          <div class="stat-card"><div class="stat-card-num" id="sa-avg">—</div><div class="stat-card-label">Moyenne</div></div>
+          <div class="stat-card"><div class="stat-card-num" id="sa-top">—</div><div class="stat-card-label">Meilleur score</div></div>
+        </div>
+
+        <!-- Ranking table -->
+        <div style="overflow-x:auto">
+          <table class="results-table" id="sa-table">
+            <thead>
+              <tr>
+                <th style="width:50px">Rang</th>
+                <th>Nom complet</th>
+                <th>Session</th>
+                <th>Date de l'examen</th>
+                <th>Score</th>
+                <th>%</th>
+                <th>Résultat</th>
+                <th>Durée</th>
+              </tr>
+            </thead>
+            <tbody id="sa-tbody">
+              <tr><td colspan="8" style="text-align:center;padding:30px;color:var(--muted)">Aucun résultat disponible</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
       <!-- PUBLISH (Google Sites) -->
       <div id="admin-publish" class="admin-section">
         <div class="section-header"><h2 class="section-title">Publier sur Google Sites</h2></div>
@@ -1104,7 +1237,7 @@ textarea.config-input { resize: vertical; min-height: 80px; }
         <span style="font-size:12px;color:#94a3b8" id="q-counter">Question 1/1</span>
         <div style="display:flex;gap:8px">
           <button class="btn-nav-light" onclick="nextQuestion()" id="btn-next">Suivant ▶</button>
-          <button class="btn-finish" onclick="confirmSubmit()" id="btn-submit" style="display:none">✓ Terminer l'examen</button>
+          <button class="btn-finish" onclick="confirmSubmit()" id="btn-submit">✓ Terminer l'examen</button>
         </div>
       </div>
     </div>
@@ -1135,7 +1268,8 @@ textarea.config-input { resize: vertical; min-height: 80px; }
         <div class="detail-item"><span>Seuil requis</span><strong id="r-threshold">—</strong></div>
         <div class="detail-item"><span>Durée</span><strong id="r-duration">—</strong></div>
       </div>
-      <div class="result-actions">
+      <div class="result-actions" style="flex-wrap:wrap;gap:10px">
+        <button class="btn-result-primary" onclick="printExamReport()" style="background:linear-gradient(135deg,#7c3aed,#a855f7)">🖨️ Imprimer / PDF</button>
         <button class="btn-result-primary" onclick="showCandidateLogin()">Nouvel Examen ▶</button>
         <button class="btn-result-secondary" onclick="showScreen('landing')">Accueil</button>
       </div>
@@ -1285,6 +1419,7 @@ function adminNav(section, el) {
   if(target) target.classList.add('active');
   if(section === 'questions') renderQB();
   if(section === 'results') renderAdminResults();
+  if(section === 'session-analysis') renderSessionAnalysis();
   if(section === 'sessions') renderSessions();
 }
 
@@ -1334,22 +1469,46 @@ function createNewSession() {
 
   document.getElementById('new-session-code-display').textContent = code;
   document.getElementById('new-session-info').textContent = `${count} questions · ${examConfig.duration} min · Seuil ${examConfig.passThreshold}%`;
-  document.getElementById('session-created-modal').classList.remove('hidden');
+  openModal('session-created-modal');
 }
 
 let _currentSessionCodeToCopy = '';
+/* ── Clipboard helper: works on Google Sites (blocked clipboard API) ── */
+function copyToClipboard(text, btnEl, label) {
+  function fallback() {
+    const ta = document.createElement('textarea');
+    ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+    document.body.appendChild(ta); ta.focus(); ta.select();
+    try { document.execCommand('copy'); } catch(e) {}
+    document.body.removeChild(ta);
+  }
+  if(navigator.clipboard && window.isSecureContext) {
+    navigator.clipboard.writeText(text).catch(fallback);
+  } else { fallback(); }
+  if(btnEl) { const orig = btnEl.textContent; btnEl.textContent = '✅ Copié !'; setTimeout(() => btnEl.textContent = orig, 2200); }
+  else { alert('✅ Copié : ' + text); }
+}
+
+function openModal(id) {
+  const el = document.getElementById(id);
+  el.classList.remove('hidden');
+  el.classList.add('open');
+}
+function closeModal(id) {
+  const el = document.getElementById(id);
+  el.classList.add('hidden');
+  el.classList.remove('open');
+}
+
 function copySessionCode() {
   const code = document.getElementById('new-session-code-display').textContent;
-  navigator.clipboard.writeText(code)
-    .then(() => alert('✅ Code copié : ' + code))
-    .catch(() => prompt('Copiez ce code :', code));
+  const btn = document.querySelector('#session-created-modal .btn-blue');
+  copyToClipboard(code, btn);
 }
-function closeSessionModal() { document.getElementById('session-created-modal').classList.add('hidden'); }
+function closeSessionModal() { closeModal('session-created-modal'); }
 
 function copyCode(code) {
-  navigator.clipboard.writeText(code)
-    .then(() => { const el = event.target; el.textContent = '✅ Copié !'; setTimeout(() => el.textContent = '📋 Copier', 2000); })
-    .catch(() => prompt('Code de session :', code));
+  copyToClipboard(code, event.currentTarget || event.target);
 }
 
 function closeSession(code) {
@@ -1777,7 +1936,7 @@ function startTimer() {
   timerInterval = setInterval(() => {
     currentExam.secondsLeft--;
     updateTimerDisplay();
-    if(currentExam.secondsLeft <= 0) { clearInterval(timerInterval); alert('⏰ Temps écoulé !'); finalSubmit(); }
+    if(currentExam.secondsLeft <= 0) { clearInterval(timerInterval); timerExpired(); }
   }, 1000);
 }
 
@@ -1838,7 +1997,6 @@ function renderExamQuestion(i) {
   // Buttons
   document.getElementById('btn-prev').style.display = i === 0 ? 'none' : '';
   document.getElementById('btn-next').style.display = i === n-1 ? 'none' : '';
-  document.getElementById('btn-submit').style.display = i === n-1 ? 'inline-block' : 'none';
 }
 
 function selectOption(oi) {
@@ -1863,17 +2021,21 @@ function nextQuestion() { if(currentExam.currentIndex < currentExam.questions.le
 // ══════════════════════════════════════
 //  SUBMIT
 // ══════════════════════════════════════
-function confirmSubmit() {
+function confirmSubmit(expired) {
   const u = currentExam.answers.filter(a => a === null).length;
   const n = currentExam.questions.length;
-  document.getElementById('submit-modal-body').innerHTML = `
-    <p style="color:#1e293b;margin-bottom:12px">Vous allez soumettre votre examen. Cette action est irréversible.</p>
-    <div style="background:#f8fafc;border-radius:8px;padding:12px;margin:10px 0;color:#1e293b">
-      <div>Répondu : <strong style="color:#16a34a">${n-u} / ${n}</strong></div>
-      <div>Non répondu : <strong style="color:${u>0?'#ef4444':'#16a34a'}">${u}</strong></div>
-    </div>
-    <p style="font-size:12px;color:#94a3b8">⚠️ Impossible de modifier après soumission.</p>`;
-  document.getElementById('submit-modal').classList.remove('hidden');
+  let msg = expired
+    ? '⏰ Temps écoulé ! L\'examen va être soumis automatiquement.'
+    : (u > 0
+        ? `Attention : ${u} question(s) sans réponse. Voulez-vous quand même terminer ?`
+        : 'Toutes les questions sont répondues. Terminer l\'examen ?');
+  if(expired || confirm(msg)) {
+    finalSubmit();
+  }
+}
+
+function timerExpired() {
+  confirmSubmit(true);
 }
 
 function closeSubmitModal() { document.getElementById('submit-modal').classList.add('hidden'); }
@@ -1904,12 +2066,28 @@ function finalSubmit() {
   const ans = e.answers.filter(a => a !== null).length;
   const durationSec = Math.floor((Date.now() - e.startTime)/1000);
 
+  // Build detailed answers for PDF report
+  const detailedAnswers = e.questions.map((q, i) => {
+    const userAns = e.answers[i];
+    let isCorrect = false;
+    if(userAns !== null) {
+      if(Array.isArray(q.answer)) {
+        const ua = (Array.isArray(userAns)?userAns:[userAns]).slice().sort().join(',');
+        isCorrect = ua === q.answer.slice().sort().join(',');
+      } else {
+        isCorrect = userAns === (q.correct ? q.correct[0] : q.answer);
+      }
+    }
+    return { q, userAns, isCorrect };
+  });
+
   const rec = {
     id: Date.now(), sessionCode: e.sessionCode, candidateName: e.candidateName,
     earnedPoints: pts, totalPoints: total, percentage: pct, passed,
     answeredCount: ans, totalQuestions: e.questions.length, threshold: e.passThreshold,
     dateTime: new Date().toLocaleDateString('fr-FR') + ' ' + new Date().toTimeString().substring(0,5),
-    durationSec, correctCount: cor, wrongCount: e.questions.length - cor - (e.questions.length - ans)
+    durationSec, correctCount: cor, wrongCount: e.questions.length - cor - (e.questions.length - ans),
+    detailedAnswers
   };
 
   if(activeSessions[e.sessionCode]?.candidates) activeSessions[e.sessionCode].candidates[e.candidateName] = rec;
@@ -1963,6 +2141,82 @@ function renderAdminResults() {
       <td><span class="${r.passed?'badge-pass':'badge-fail'}">${r.passed?'✓ RÉUSSI':'✗ ÉCHEC'}</span></td>
       <td style="color:var(--muted)">${Math.floor(r.durationSec/60)}m${r.durationSec%60}s</td>
     </tr>`).join('');
+}
+
+// ══════════════════════════════════════
+//  SESSION ANALYSIS
+// ══════════════════════════════════════
+function populateSessionSelect() {
+  const sel = document.getElementById('sa-session-select');
+  const codes = [...new Set(allResults.map(r => r.sessionCode))].sort();
+  sel.innerHTML = '<option value="all">— Toutes les sessions —</option>' +
+    codes.map(c => `<option value="${c}">${c}</option>`).join('');
+}
+
+function renderSessionAnalysis() {
+  populateSessionSelect();
+  const code = document.getElementById('sa-session-select').value;
+  let data = code === 'all' ? allResults : allResults.filter(r => r.sessionCode === code);
+
+  // Sort by percentage desc → rank
+  data = data.slice().sort((a, b) => b.percentage - a.percentage || a.durationSec - b.durationSec);
+
+  // KPIs
+  const t = data.length;
+  const p = data.filter(r => r.passed).length;
+  const avg = t ? Math.round(data.reduce((s,r) => s + r.percentage, 0) / t) : null;
+  const top = t ? data[0].percentage : null;
+  document.getElementById('sa-total').textContent = t || '—';
+  document.getElementById('sa-pass').textContent = t ? p : '—';
+  document.getElementById('sa-fail').textContent = t ? (t - p) : '—';
+  document.getElementById('sa-avg').textContent = avg !== null ? avg + '%' : '—';
+  document.getElementById('sa-top').textContent = top !== null ? top + '%' : '—';
+  document.getElementById('sa-count').textContent = t ? `${t} résultat(s)` : '';
+
+  if (!t) {
+    document.getElementById('sa-tbody').innerHTML =
+      '<tr><td colspan="8" style="text-align:center;padding:30px;color:var(--muted)">Aucun résultat pour cette session</td></tr>';
+    return;
+  }
+
+  // Assign ranks (tied score = same rank)
+  let rank = 1;
+  document.getElementById('sa-tbody').innerHTML = data.map((r, i) => {
+    if (i > 0 && r.percentage < data[i-1].percentage) rank = i + 1;
+    const medal = rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : rank;
+    const dur = Math.floor(r.durationSec/60) + 'm' + String(r.durationSec%60).padStart(2,'0') + 's';
+    return `<tr style="animation:fadeInUp .2s ease ${i*0.04}s both">
+      <td style="text-align:center;font-weight:700;font-size:16px">${medal}</td>
+      <td><strong>${r.candidateName || '—'}</strong></td>
+      <td style="font-family:'Oswald',sans-serif;color:var(--gold)">${r.sessionCode}</td>
+      <td style="font-size:12px;color:var(--muted)">${r.dateTime || '—'}</td>
+      <td><strong>${(+r.earnedPoints).toFixed(1)} / ${(+r.totalPoints).toFixed(1)}</strong></td>
+      <td><strong style="color:${r.passed?'var(--green)':'var(--red)'}">${r.percentage}%</strong></td>
+      <td><span class="${r.passed?'badge-pass':'badge-fail'}">${r.passed?'✓ RÉUSSI':'✗ ÉCHEC'}</span></td>
+      <td style="color:var(--muted)">${dur}</td>
+    </tr>`;
+  }).join('');
+}
+
+function exportSessionCSV() {
+  if (!allResults.length) { alert('Aucun résultat à exporter'); return; }
+  const code = document.getElementById('sa-session-select').value;
+  let data = code === 'all' ? allResults : allResults.filter(r => r.sessionCode === code);
+  data = data.slice().sort((a,b) => b.percentage - a.percentage || a.durationSec - b.durationSec);
+  let rank = 1;
+  const rows = [['Rang','Nom complet','Session','Date examen','Score','Total','%','Résultat','Durée']];
+  data.forEach((r,i) => {
+    if(i>0 && r.percentage < data[i-1].percentage) rank = i+1;
+    rows.push([rank, r.candidateName, r.sessionCode, r.dateTime,
+      r.earnedPoints, r.totalPoints, r.percentage+'%',
+      r.passed?'RÉUSSI':'ÉCHEC',
+      Math.floor(r.durationSec/60)+'m'+String(r.durationSec%60).padStart(2,'0')+'s']);
+  });
+  const csv = rows.map(row => row.map(c => '"'+String(c).replace(/"/g,'""')+'"').join(';')).join('\n');
+  const a = document.createElement('a');
+  a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent('\uFEFF' + csv);
+  a.download = 'analyse_session_' + (code==='all'?'toutes':code) + '_' + new Date().toISOString().split('T')[0] + '.csv';
+  a.click();
 }
 
 function exportCSV() {
@@ -2091,6 +2345,147 @@ function loadDefaultQuestions() {
   ];
   saveToStorage();
   selectedForExam = new Set(questionBank.map(q => q.id));
+}
+
+// ══════════════════════════════════════
+//  SELECT / DESELECT ALL QUESTIONS
+// ══════════════════════════════════════
+function selectAllQuestions() {
+  questionBank.forEach(q => selectedForExam.add(q.id));
+  renderQB();
+}
+function deselectAllQuestions() {
+  selectedForExam.clear();
+  renderQB();
+}
+
+// ══════════════════════════════════════
+//  PRINT / EXPORT PDF REPORT
+// ══════════════════════════════════════
+function printExamReport() {
+  if(!currentExam) { alert('Aucun examen en cours.'); return; }
+  const e = currentExam;
+  const rec = allResults[allResults.length - 1];
+  if(!rec) return;
+
+  const typeLabels = {tf:'Vrai/Faux', sc:'Choix simple', mc:'Choix multiple'};
+  const letters = 'ABCDE';
+
+  let questionsHTML = '';
+  (rec.detailedAnswers || []).forEach((d, i) => {
+    const q = d.q;
+    const userAns = d.userAns;
+    const correctAns = Array.isArray(q.answer) ? q.answer : [q.correct ? q.correct[0] : q.answer];
+    const statusColor = userAns === null ? '#94a3b8' : d.isCorrect ? '#16a34a' : '#dc2626';
+    const statusIcon = userAns === null ? '○ Non répondu' : d.isCorrect ? '✓ Correct' : '✗ Incorrect';
+
+    let optsHTML = q.options.map((opt, oi) => {
+      const isUserChoice = userAns !== null && (Array.isArray(userAns) ? userAns.includes(oi) : userAns === oi);
+      const isCorrectChoice = correctAns.includes(oi);
+      let bg = '#fff', border = '#e2e8f0', color = '#1e293b', weight = '400';
+      if(isCorrectChoice) { bg = '#f0fdf4'; border = '#16a34a'; color = '#166534'; weight = '700'; }
+      if(isUserChoice && !isCorrectChoice) { bg = '#fef2f2'; border = '#dc2626'; color = '#991b1b'; weight = '700'; }
+      const marker = isUserChoice ? (isCorrectChoice ? '✓ ' : '✗ ') : (isCorrectChoice ? '✓ ' : '');
+      return `<div style="display:flex;align-items:center;gap:8px;padding:6px 10px;margin:3px 0;border:1.5px solid ${border};border-radius:6px;background:${bg};color:${color};font-weight:${weight};font-size:12px;">
+        <span style="width:22px;height:22px;border-radius:4px;background:${isUserChoice||isCorrectChoice?border:'#e2e8f0'};color:${isUserChoice||isCorrectChoice?'#fff':color};display:inline-flex;align-items:center;justify-content:center;font-weight:700;font-size:11px;flex-shrink:0">${letters[oi]}</span>
+        <span>${marker}${opt}</span>
+      </div>`;
+    }).join('');
+
+    questionsHTML += `
+      <div style="border:1px solid #e2e8f0;border-radius:8px;margin-bottom:14px;overflow:hidden;page-break-inside:avoid">
+        <div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:#f8fafc;border-bottom:1px solid #e2e8f0">
+          <span style="background:#003a7d;color:#fff;padding:2px 10px;border-radius:12px;font-size:10px;font-weight:700">${typeLabels[q.type||'sc']} · Q${i+1}</span>
+          <span style="background:#eff6ff;color:#005ab5;padding:2px 10px;border-radius:12px;font-size:10px;font-weight:700">${q.points} pt${q.points>1?'s':''}</span>
+          <span style="margin-left:auto;font-size:11px;font-weight:700;color:${statusColor}">${statusIcon}</span>
+        </div>
+        <div style="padding:12px">
+          <p style="font-size:13px;font-weight:600;color:#1e293b;margin-bottom:10px;line-height:1.5">${q.text}</p>
+          ${optsHTML}
+        </div>
+      </div>`;
+  });
+
+  const pct = rec.percentage;
+  const passed = rec.passed;
+  const headerBg = passed ? 'linear-gradient(135deg,#064e3b,#16a34a)' : 'linear-gradient(135deg,#7f1d1d,#b91c1c)';
+
+  const html = `<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Rapport d'Examen — ${rec.candidateName}</title>
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;700&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Source Sans 3',sans-serif;background:#fff;color:#1e293b;font-size:13px}
+  @media print {
+    body{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+    .no-print{display:none!important}
+    @page{size:A4;margin:12mm}
+  }
+  .print-btn{position:fixed;bottom:20px;right:20px;padding:12px 24px;background:linear-gradient(135deg,#003a7d,#1a7fd4);color:#fff;border:none;border-radius:8px;font-family:'Oswald',sans-serif;font-size:14px;letter-spacing:1px;cursor:pointer;z-index:999;box-shadow:0 4px 14px rgba(0,0,0,.2)}
+</style>
+</head>
+<body>
+<button class="print-btn no-print" onclick="window.print()">🖨️ Imprimer / Enregistrer PDF</button>
+<div style="max-width:800px;margin:0 auto;padding:24px 20px">
+
+  <!-- HEADER -->
+  <div style="background:${headerBg};border-radius:12px;padding:28px 32px;text-align:center;color:#fff;margin-bottom:20px">
+    <div style="font-family:'Oswald',sans-serif;font-size:13px;letter-spacing:3px;opacity:.8;margin-bottom:6px">IWUF — CERTIFICATION ARBITRE SANDA</div>
+    <div style="font-family:'Oswald',sans-serif;font-size:48px;font-weight:700;line-height:1">${pct}%</div>
+    <div style="font-family:'Oswald',sans-serif;font-size:22px;font-weight:700;letter-spacing:2px;margin:6px 0">${passed?'✓ RÉUSSI':'✗ ÉCHEC'}</div>
+    <div style="font-size:13px;opacity:.85">${passed?'Félicitations ! Certification validée.':'Seuil de '+rec.threshold+'% non atteint.'}</div>
+  </div>
+
+  <!-- CANDIDATE INFO -->
+  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px">
+    <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:14px;text-align:center">
+      <div style="font-family:'Oswald',sans-serif;font-size:22px;font-weight:700;color:#1e293b">${rec.correctCount}</div>
+      <div style="font-size:10px;color:#94a3b8;text-transform:uppercase;letter-spacing:1px;margin-top:3px">Correctes</div>
+    </div>
+    <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:14px;text-align:center">
+      <div style="font-family:'Oswald',sans-serif;font-size:22px;font-weight:700;color:#dc2626">${rec.wrongCount}</div>
+      <div style="font-size:10px;color:#94a3b8;text-transform:uppercase;letter-spacing:1px;margin-top:3px">Incorrectes</div>
+    </div>
+    <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:14px;text-align:center">
+      <div style="font-family:'Oswald',sans-serif;font-size:22px;font-weight:700;color:#005ab5">${rec.earnedPoints.toFixed(1)} / ${rec.totalPoints.toFixed(1)}</div>
+      <div style="font-size:10px;color:#94a3b8;text-transform:uppercase;letter-spacing:1px;margin-top:3px">Points</div>
+    </div>
+  </div>
+
+  <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:14px;margin-bottom:20px">
+    <div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid #e2e8f0;font-size:13px"><span style="color:#64748b">Arbitre</span><strong>${rec.candidateName}</strong></div>
+    <div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid #e2e8f0;font-size:13px"><span style="color:#64748b">Session</span><strong>${rec.sessionCode}</strong></div>
+    <div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid #e2e8f0;font-size:13px"><span style="color:#64748b">Date</span><strong>${rec.dateTime}</strong></div>
+    <div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid #e2e8f0;font-size:13px"><span style="color:#64748b">Questions répondues</span><strong>${rec.answeredCount} / ${rec.totalQuestions}</strong></div>
+    <div style="display:flex;justify-content:space-between;padding:7px 0;font-size:13px"><span style="color:#64748b">Durée</span><strong>${Math.floor(rec.durationSec/60)}m ${rec.durationSec%60}s</strong></div>
+  </div>
+
+  <!-- LEGEND -->
+  <div style="display:flex;gap:16px;margin-bottom:16px;font-size:11px;flex-wrap:wrap">
+    <div style="display:flex;align-items:center;gap:6px"><div style="width:14px;height:14px;border-radius:3px;background:#f0fdf4;border:1.5px solid #16a34a"></div> Bonne réponse</div>
+    <div style="display:flex;align-items:center;gap:6px"><div style="width:14px;height:14px;border-radius:3px;background:#fef2f2;border:1.5px solid #dc2626"></div> Réponse choisie incorrecte</div>
+    <div style="display:flex;align-items:center;gap:6px"><div style="width:14px;height:14px;border-radius:3px;background:#fff;border:1.5px solid #e2e8f0"></div> Non sélectionnée</div>
+  </div>
+
+  <!-- QUESTIONS DETAIL -->
+  <div style="font-family:'Oswald',sans-serif;font-size:15px;font-weight:700;color:#003a7d;margin-bottom:12px;padding-bottom:8px;border-bottom:2px solid #e2e8f0">
+    DÉTAIL DES RÉPONSES
+  </div>
+  ${questionsHTML}
+
+  <div style="text-align:center;margin-top:24px;padding-top:16px;border-top:1px solid #e2e8f0;font-size:11px;color:#94a3b8">
+    IWUF — Système d'Examen des Arbitres Sanda · Règlement 2024 · Généré le ${new Date().toLocaleString('fr-FR')}
+  </div>
+</div>
+</body>
+</html>`;
+
+  const win = window.open('', '_blank');
+  win.document.write(html);
+  win.document.close();
 }
 </script>
 </body>
